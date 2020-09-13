@@ -72,7 +72,7 @@ void framebuffer_size_callback(GLFWwindow* win, int w, int h)
 
 void scroll(GLFWwindow* window, double xoffset, double yoffset)
 {
-  cout << "Got xoffset " << xoffset << ", got yoffset " << yoffset << endl;
+  /* cout << "Got xoffset " << xoffset << ", got yoffset " << yoffset << endl; */
   if (yoffset < 0) {
     baseline = baseline <= 0? 0 : baseline - 1;
   } else {
@@ -85,11 +85,9 @@ void keys(GLFWwindow* window, int key, int scancode, int action, int mods) {
     switch (key) {
       case GLFW_KEY_EQUAL:
         scale += 0.1f;
-        cout << "Press =" << endl;
         break;
       case GLFW_KEY_MINUS:
         scale = scale <= 0.1f? 0.1f: scale-0.1f;
-        cout << "Press -" << endl;
         break;
       case GLFW_KEY_F:
         page = page >= maxpage? maxpage : page + 1;
@@ -111,17 +109,16 @@ void keys(GLFWwindow* window, int key, int scancode, int action, int mods) {
 
 int main(int argc, char** argv)
 {
-  RFConfig conf{"/home/eilliot/.rfc/repo/text/", "/home/eilliot/.local/share/fonts/", "/home/eilliot/.rfc/shaders/"};
-  RFCIndex indx{conf, "rfc-index.txt"};
-
-  int num = 0;
   if (argc != 2) {
-    cout<< "Please specific a number to query" << endl;
+    cout<< argv[0] << " [rfc num]" << endl;
     exit(0);
   }
 
+  RFConfig conf{"/home/eilliot/.rfc/repo/text/", "/home/eilliot/.local/share/fonts/", "/home/eilliot/.rfc/shaders/"};
+  RFCIndex indx{conf, "rfc-index.txt"};
+
   // prepare the rfc document
-  num = std::stoi(argv[1]);
+  int num = std::stoi(argv[1]);
   indx.consoleprint(num);
   RFCDoc document{conf, num};
   maxpage = document.page_num();

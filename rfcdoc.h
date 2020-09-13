@@ -43,7 +43,7 @@ class RFCDoc
     // 1 based index
     const std::string& at(int i) const;
     // 1 based page
-    const Range& get_page(int i) const { return pages.at(i+1); }
+    const Range& get_page(int i) const { return pages.at(i-1); }
   private:
     std::vector<std::string> lines;
     std::vector<Range> pages;
