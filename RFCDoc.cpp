@@ -5,7 +5,7 @@ using std::string;
 RFCDoc::RFCDoc(RFConfig& conf, int number)
 {
   std::fstream file{
-    conf.basedir + "rfc" + std::to_string(number) + ".txt",
+    conf.query<string>("repo") + "rfc" + std::to_string(number) + ".txt",
     std::ios_base::in
   };
   string line;

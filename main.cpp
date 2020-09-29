@@ -17,7 +17,7 @@ class ShaderStock {
   ~ShaderStock() {}
 };
 
-#define RFCDOCVIEWER "0.0.1-r1"
+#define RFCDOCVIEWER "0.0.2"
 
 void render_text(GLuint program, std::map<char, FontTexture>& codemap, unsigned int &VAO, unsigned int &VBO, float x, float y, float scale, glm::vec3 color, const string &text) {
   glUseProgram(program);
@@ -56,6 +56,7 @@ int page = 1;
 int baseline = 1;
 int maxpage;
 int maxline;
+bool flag = true; // introduce this flag to take control poll frequency
 int fontheight = 0;
 int fontbeary = 0;
 int width;
@@ -68,6 +69,7 @@ void framebuffer_size_callback(GLFWwindow* win, int w, int h)
   width = w;
   height = h;
   glViewport(0, 0, w, h);
+  flag = true;  // when changed, re render the content.
 }
 
 void scroll(GLFWwindow* window, double xoffset, double yoffset)
@@ -78,6 +80,7 @@ void scroll(GLFWwindow* window, double xoffset, double yoffset)
   } else {
     baseline += 1;
   }
+  flag = true;
 }
 
 void keys(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -104,28 +107,70 @@ void keys(GLFWwindow* window, int key, int scancode, int action, int mods) {
         baseline = baseline <= 0? 0 : baseline - 1;
         break;
     }
+    flag = true;
   }
 }
 
 int main(int argc, char** argv)
 {
-  if (argc != 2) {
-    cout<< argv[0] << " [rfc num]" << endl;
+  if (argc < 3) {
+    cout<< argv[0] << " [command] [args]" << endl;
+    cout<< "    commands:" << endl;
+    cout<< "      query <regex>" << endl;
+    cout<< "      show  <rfc num> [limit num]" << endl;
+    cout<< "      conf  [key]" << endl;
     exit(0);
   }
 
-  RFConfig conf{"/home/eilliot/.rfc/repo/text/", "/home/eilliot/.local/share/fonts/", "/home/eilliot/.rfc/shaders/"};
+  // retrive configuration file from environment
+  RFConfig conf{std::getenv("RFCONF")};
+
+  // commands show configuration value
+  if (string{argv[1]} == string{"conf"}) {
+    if (string{argv[2]} == string{"all"}) {
+      string ls[] {"font", "fontdir", "shaderdir", "repo"};
+      for (string& i : ls) {
+        cout << i << " => " << conf.query<string>(string{i}) << ";" << endl;
+      }
+    } else {
+      cout << argv[2] << " : " << conf.query<string>(string{argv[2]}) << endl;
+    }
+    return 0;
+  }
+
+  // got index here
   RFCIndex indx{conf, "rfc-index.txt"};
 
-  // prepare the rfc document
-  int num = std::stoi(argv[1]);
+  if (string{argv[1]} == string{"query"}) {
+    std::vector<int> res = indx.regexsearch(argv[2]);
+    int size = res.size();
+    if (argc >= 4) {
+      size = std::stoi(argv[3]);
+    }
+    int i = 0;
+    for (auto idx:res) {
+      if (i++ >= size) return 0;
+      cout << "RFC INDEX: " << idx << "." << endl;
+      indx.consoleprint(idx);
+      cout << endl;
+    }
+    return 0;
+  } else if (string{argv[1]} == string{"show"}) {
+    ;
+  } else {
+    cout << "unrecognizes command; available command: query, show, conf" << endl;
+    return -1;
+  }
+
+  // show the rfc document.
+  int num = std::stoi(argv[2]);
   indx.consoleprint(num);
   RFCDoc document{conf, num};
   maxpage = document.page_num();
   maxline = document.line_num();
 
   FontResLib fontlib;
-  fontlib.add_fontface(conf.fontdir, "CamingoCode-Regular.ttf", 0);
+  fontlib.add_fontface(conf.query<string>("fontdir"), conf.query<string>("font"), 0);
   fontlib.set_char_size(0, 0, 24);
 
   // initialize gl here
@@ -134,7 +179,7 @@ int main(int argc, char** argv)
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-  GLFWwindow* window = glfwCreateWindow(640, 480, "RFC Reader", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(810, 540, "RFC Reader", NULL, NULL);
   glfwMakeContextCurrent(window);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   glfwSetKeyCallback(window, keys);
@@ -145,8 +190,9 @@ int main(int argc, char** argv)
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   // setting up shader
-  shader vertex{"font_vertex", conf.shaderdir + "font.vert", GL_VERTEX_SHADER};
-  shader fragment{"font_fragment", conf.shaderdir + "font.frag", GL_FRAGMENT_SHADER};
+  string shaderdir = conf.query<string>("shaderdir");
+  shader vertex{"font_vertex", shaderdir + "font.vert", GL_VERTEX_SHADER};
+  shader fragment{"font_fragment", shaderdir + "font.frag", GL_FRAGMENT_SHADER};
   GLuint program = glCreateProgram();
   glAttachShader(program, vertex.get_shader());
   glAttachShader(program, fragment.get_shader());
@@ -195,22 +241,26 @@ int main(int argc, char** argv)
   glm::vec3 color{0.92f, 0.85f, 0.69f};
   int line = 20;
   while (!glfwWindowShouldClose(window)) {
-    projection = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
-    glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    if (flag) {
+      // render it only necessory
+      projection = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
+      glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-    // clear the surface
-    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    glClearColor(0.156f, 0.156f, 0.156f, 1.0f);
+      // clear the surface
+      glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+      glClearColor(0.156f, 0.156f, 0.156f, 1.0f);
 
-    // to render the page
-    int line;
-    const Range &pagerange = document.get_page(page);
-    for (line = pagerange.begin + baseline; line <=pagerange.end; line++) {
-      int y = height - fontbeary - (line - pagerange.begin - baseline) * fontheight;
-      render_text(program, codemap, VAO, VBO, 0, y, scale, color, document.at(line));
+      // to render the page
+      int line;
+      const Range &pagerange = document.get_page(page);
+      for (line = pagerange.begin + baseline; line <=pagerange.end; line++) {
+        int y = height - fontbeary - (line - pagerange.begin - baseline) * fontheight;
+        render_text(program, codemap, VAO, VBO, 0, y, scale, color, document.at(line));
+      }
+      glfwSwapBuffers(window);
+      flag = false;
     }
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+    glfwWaitEvents(); // block the loop, reduce cpu usage
   }
 
   glfwTerminate();

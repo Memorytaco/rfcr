@@ -7,7 +7,7 @@ using std::cout;
 /* RFCIndex */
 RFCIndex::RFCIndex(RFConfig& conf, std::string name)
 {
-  std::fstream file{conf.basedir + name, std::ios_base::in};
+  std::fstream file{conf.query<std::string>("repo") + name, std::ios_base::in};
   std::string tmp{};
   std::string entry{};
   std::vector<std::string> list{};
@@ -32,6 +32,7 @@ RFCIndex::RFCIndex(RFConfig& conf, std::string name)
 
   // fill the entry to hashtable
   for (auto &i: list) {
+    keys.push_back(stoi(i.substr(0,4)));
     db[i.substr(0, 4)] = add_entry(i);
   }
 }
@@ -85,4 +86,18 @@ std::map<string, string> RFCIndex::add_entry(string& entry)
   table["Attrs"] = m.suffix();
 
   return table;
+}
+
+std::vector<int> RFCIndex::regexsearch(std::string regx)
+{
+  std::vector<int> list{};
+  std::regex pattern(regx);
+  std::smatch m;
+  for (auto key : keys) {
+    auto& val = query(key);
+    string str = val.at("Title");
+    regex_search(str, m, pattern);
+    if (m.size() > 0) list.push_back(key);
+  }
+  return list;
 }

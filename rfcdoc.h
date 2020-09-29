@@ -3,21 +3,23 @@
 
 #include "core.h"
 
+#include "yaml-cpp/yaml.h"
 class RFConfig
 {
   public:
-    std::string basedir;
-    std::string fontdir;
-    std::string shaderdir;
-
-    RFConfig(std::string base, std::string font, std::string shader) :
-      basedir{base}, fontdir{font}, shaderdir{shader}
-    {}
-    RFConfig(RFConfig& conf) {
-      basedir =  conf.basedir;
-      fontdir = conf.fontdir;
-      shaderdir = conf.shaderdir;
+    RFConfig(std::string path) : yamlconf{path} {
+      conf = YAML::LoadFile(yamlconf);
     }
+    /* RFConfig(RFConfig& conf); */
+
+    template<typename T>
+    T query(std::string key) {
+      return conf[key].as<T>();
+    }
+
+  public:
+    std::string yamlconf;
+    YAML::Node conf;
 };
 
 class RFCIndex
@@ -27,8 +29,10 @@ class RFCIndex
     const std::map<std::string, std::string>& query(int key) const;
     int size() const { return db.size(); }
     void consoleprint(int num) const;
+    std::vector<int> regexsearch(std::string);
   private:
     std::map<std::string, std::map<std::string, std::string>> db;
+    std::vector<int> keys{};  // with default empty keys
     std::map<std::string, std::string> add_entry(std::string& entry);
 };
 
