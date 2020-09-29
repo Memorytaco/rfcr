@@ -1,0 +1,4 @@
+fontdir: null # your truetype fonts directory here
+shaderdir: /home/<yours>/.rfc/shaders/ # the shader used by the program
+repo: /home/<yours>/.rfc/repo/ # the rfc text repository with rfc-index.txt in it
+font: null # specific a font such as "Monaco.ttf", specific the file name

@@ -1,0 +1,9 @@
+fontdir: "/home/memorytoco/.local/share/fonts/"
+# in the fonts, there are "RobotoMono-VariableFont_wght.ttf" and "monaco.ttf" files.
+shaderdir: "/home/memorytoco/.rfc/shaders/"
+repo: "/home/memorytoco/.rfc/repo/"
+font: "RobotoMono-VariableFont_wght.ttf"
+
+# the '/' end each string value is necessory, cause using simple
+# string concatenation to make path and lack '/' will cause an
+# invalid path.
