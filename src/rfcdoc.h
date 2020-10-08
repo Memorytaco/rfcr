@@ -10,7 +10,9 @@ class RFConfig
     RFConfig(std::string path) : yamlconf{path} {
       conf = YAML::LoadFile(yamlconf);
     }
-    /* RFConfig(RFConfig& conf); */
+    RFConfig(RFConfig&& conf) : yamlconf{conf.yamlconf} {
+      this->conf = std::move(conf.yamlconf);
+    }
 
     template<typename T>
     T query(std::string key) {

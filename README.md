@@ -45,6 +45,14 @@ you can choose some of your favorite *mono* fonts and configure it in your confi
 
 after all the settings, type `rfcr conf all` to show all config values.
 
+the output of `rfcr conf all`:
+```txt
+font => RobotoMono-VariableFont_wght.ttf;
+fontdir => $YOURHOME/.local/share/fonts/;
+shaderdir => $YOURHOME/.rfc/shaders/;
+repo => $YOURHOME/.rfc/repo/;
+```
+
 ## enjoy!
 
 - rfcr show <number> : display the document, use 'f' and 'b' to navigate between pages. and 'd', 'u' scroll. mouse scroll will work.

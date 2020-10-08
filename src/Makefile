@@ -5,11 +5,11 @@ LIBS=$(shell pkg-config --libs $(PACKAGES))
 
 CXX=g++
 
-OBJECTS= main.o RFCIndex.o RFCDoc.o shader.o fontResLib.o fontTexture.o
+OBJECTS= main.o RFCIndex.o RFCDoc.o shader.o fontResLib.o fontTexture.o FontMap.o
 
 all: rfcr *.h
 rfcr:	$(OBJECTS)
-	$(CXX) $(CPPFLAGS) $(OBJECTS) -o rfcr $(LIBS) libyaml-cpp.a
+	$(CXX) -std=c++17 $(CPPFLAGS) $(OBJECTS) -o rfcr $(LIBS) libyaml-cpp.a
 	mv rfcr ..
 
 clean:

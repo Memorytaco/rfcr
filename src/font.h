@@ -32,12 +32,23 @@ class FontTexture {
       bearing = font.bearing;
       advance = font.advance;
     }
+    // TODO: clean up the resources
     ~FontTexture() {}
 
     GLuint id;
     glm::ivec2 size;
     glm::ivec2 bearing;
     unsigned int advance;
+};
+
+class FontMap {
+  std::map<char, FontTexture const*> codemap;
+
+  public:
+  // TODO: add clean up function
+    FontMap(FontResLib& lib, int charsize);
+    inline int getLineHeight() { return codemap['W']->size.y; }
+    inline const FontTexture& operator[](char c) { return *codemap[c]; }
 };
 
 #endif
