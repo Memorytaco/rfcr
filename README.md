@@ -11,20 +11,17 @@ It's now not perfect and WIP.
 git clone <repository>
 cd <repository>
 git submodule init
+git submodule update
 make
 ```
 
-you will got an executable `rfcr`.
+you will got an executable `rfcr` in the root directory.
 
 ## prepare environment
 
 ### sync the rfc repository
 
-create `.rfc` directory in your $HOME directory, and copy "src/shaders" to ".rfc/".
-
-your `pwd` whill show "$HOME/.rfc" before you execute following command. if not, `cd` into it.
-
-Then, you need to download the whole rfc document repository with command `rsync -avz --delete ftp.rfc-editor.org::rfcs-text-only repo`.
+using `./install` to install config files and sync rfc repository.
 
 > setting `RSYNC_PROXY` with format "host:port" if you want to use
 > proxy. if you use privoxy then `export RSYNC_PROXY=127.0.0.1:8118`
@@ -37,10 +34,10 @@ now you are free to do your job when waiting this process being completed.
 configuration is in simple yaml format. and the file is denoted by environment variable.
 
 ``` bash
-export RFCONF="$HOME/.rfc.yml"
+export RFCONF="$HOME/.rfc/conf.yml"
 ```
 
-a template file is located in "etc" directory. copy it as "$HOME/.rfc.yml" and edit it.
+a template file is located in "etc" directory. copy it as "$HOME/.rfc/conf.yml" and edit it.
 
 > following the comments.
 
