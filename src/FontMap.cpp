@@ -11,3 +11,9 @@ FontMap::FontMap(FontResLib & lib, int charsize)
     codemap[(char)c] = new FontTexture(face);
   }
 }
+
+FontMap& FontMap::operator=(FontMap&& income)
+{
+  codemap = move(income.codemap);
+  return *this;
+}

@@ -2,8 +2,8 @@
 #define RFCFONT
 
 #include "core.h"
-
 #include <ft2build.h>
+
 #include FT_FREETYPE_H
 
 class FontResLib {
@@ -46,9 +46,13 @@ class FontMap {
 
   public:
   // TODO: add clean up function
+    FontMap() {}
     FontMap(FontResLib& lib, int charsize);
+    FontMap& operator=(FontMap&&);
     inline int getLineHeight() { return codemap['W']->size.y; }
-    inline const FontTexture& operator[](char c) { return *codemap[c]; }
+    inline const FontTexture& operator[](char c) {
+      return *codemap[c];
+    }
 };
 
 #endif

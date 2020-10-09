@@ -2,8 +2,8 @@
 #define RFCDOC
 
 #include "core.h"
-
 #include "yaml-cpp/yaml.h"
+
 class RFConfig
 {
   public:

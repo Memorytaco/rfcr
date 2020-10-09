@@ -3,6 +3,7 @@
 #include "shader.h"
 #include "rfcdoc.h"
 #include "font.h"
+#include "Window.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -12,14 +13,10 @@ using std::cout;
 using std::string;
 using std::map;
 
-class ShaderStock {
-  ShaderStock() {}
-  ~ShaderStock() {}
-};
+#define RFCDOCVIEWER "0.0.3"
 
-#define RFCDOCVIEWER "0.0.2"
-
-void render_text(GLuint program, auto& codemap, unsigned int &VAO, unsigned int &VBO, float x, float y, float scale, glm::vec3 color, const string &text) {
+template<typename T>
+void render_text(GLuint program, T& codemap, unsigned int &VAO, unsigned int &VBO, float x, float y, float scale, glm::vec3 color, const string &text) {
   glUseProgram(program);
   glUniform3f(glGetUniformLocation(program, "textColor"), color.x, color.y, color.z);
   glActiveTexture(GL_TEXTURE0);
@@ -48,85 +45,10 @@ void render_text(GLuint program, auto& codemap, unsigned int &VAO, unsigned int 
   }
 }
 
-/*
-  global control data here
-*/
-
-int page = 1;
-int baseline = 1;
-int maxpage;
-int maxline;
-bool flag = true; // introduce this flag to take control poll frequency
-int fontheight = 0;
-int fontbeary = 0;
-int width;
-int height;
-float scale = 1.0f;
-FontMap* fontmap = nullptr;
-int fontsize = 24;
-FontResLib *globalib = nullptr;
-
-// call back functions
-void framebuffer_size_callback(GLFWwindow* win, int w, int h)
-{
-  width = w;
-  height = h;
-  glViewport(0, 0, w, h);
-  flag = true;  // when changed, re render the content.
-}
-
-void scroll(GLFWwindow* window, double xoffset, double yoffset)
-{
-  /* cout << "Got xoffset " << xoffset << ", got yoffset " << yoffset << endl; */
-  if (yoffset < 0) {
-    baseline = baseline <= 0? 0 : baseline - 1;
-  } else {
-    baseline += 1;
-  }
-  flag = true;
-}
-
-void keys(GLFWwindow* window, int key, int scancode, int action, int mods) {
-  if (action == GLFW_PRESS) {
-    switch (key) {
-      case GLFW_KEY_EQUAL:
-        /* scale += 0.1f; */
-        fontsize++;
-        delete fontmap;
-        fontmap = new FontMap{*globalib, fontsize};
-        fontheight = (*fontmap)['W'].size.y + 8;
-        fontbeary = (*fontmap)['W'].bearing.y;
-        break;
-      case GLFW_KEY_MINUS:
-        fontsize--;
-        fontsize = fontsize<=1? 1 : fontsize;
-        fontmap = new FontMap{*globalib, fontsize};
-        fontheight = (*fontmap)['W'].size.y + 8;
-        fontbeary = (*fontmap)['W'].bearing.y;
-        /* scale = scale <= 0.1f? 0.1f: scale-0.1f; */
-        break;
-      case GLFW_KEY_F:
-        page = page >= maxpage? maxpage : page + 1;
-        baseline = 0;
-        break;
-      case GLFW_KEY_B:
-        page = page <= 1? 1 : page - 1;
-        baseline = 0;
-        break;
-      case GLFW_KEY_D:
-        baseline += 1;
-        break;
-      case GLFW_KEY_U:
-        baseline = baseline <= 0? 0 : baseline - 1;
-        break;
-    }
-    flag = true;
-  }
-}
-
 int main(int argc, char** argv)
 {
   if (argc < 3) {
+    cout<< "Version " RFCDOCVIEWER << ". Memorytaco." << endl;
     cout<< argv[0] << " [command] [args]" << endl;
     cout<< "    commands:" << endl;
     cout<< "      query <regex>" << endl;
@@ -134,6 +56,15 @@ int main(int argc, char** argv)
     cout<< "      conf  [key]" << endl;
     exit(0);
   }
+
+  int page{1};
+  int baseline{0};
+  int width;
+  int height;
+  int fontsize = 24;
+  bool flag = true;
+  int fontheight = 0;
+  int fontbeary = 0;
 
   // retrive configuration file from environment
   RFConfig conf{std::getenv("RFCONF")};
@@ -179,12 +110,14 @@ int main(int argc, char** argv)
   int num = std::stoi(argv[2]);
   indx.consoleprint(num);
   RFCDoc document{conf, num};
-  maxpage = document.page_num();
-  maxline = document.line_num();
+  int maxpage = document.page_num();
+  int maxline = document.line_num();
 
+  // init FreeType2 library
   FontResLib fontlib;
   fontlib.add_fontface(conf.query<string>("fontdir"), conf.query<string>("font"), 0);
-  globalib = &fontlib;
+  // Declare fontmap here.
+  FontMap fontmap{};
 
   // initialize gl here
   glfwInit();
@@ -192,15 +125,74 @@ int main(int argc, char** argv)
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-  GLFWwindow* window = glfwCreateWindow(810, 540, "RFC Reader", NULL, NULL);
-  glfwMakeContextCurrent(window);
-  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-  glfwSetKeyCallback(window, keys);
-  glfwSetScrollCallback(window, scroll);
+  string name {"RFC Reader"};
+  Window window{810, 540, name};
+  window.setCurrent();
+  window.setCallBack(Window::WindowCallTy::FrameBufferSize,
+    [&width, &height, &flag] (Window* self, int w, int h) -> void {
+    width = w;
+    height = h;
+    glViewport(0, 0, w, h);
+    flag = true;
+  });
+  window.setKeyCallBack(
+    [ &page, &baseline, &fontheight, &fontbeary
+    , &maxpage, &maxline, &flag, &fontsize, &fontmap, &fontlib
+    ] (Window* self, int key, int scancode, int action, int mods)
+    -> void {
+    if (action == GLFW_PRESS) {
+      switch (key) {
+        case GLFW_KEY_EQUAL:
+          fontsize++;
+          fontmap = FontMap{fontlib, fontsize};
+          fontheight = fontmap['W'].size.y + 8;
+          fontbeary = fontmap['W'].bearing.y;
+          break;
+        case GLFW_KEY_MINUS:
+          fontsize--;
+          fontsize = fontsize<=1? 1 : fontsize;
+          fontmap = FontMap{fontlib, fontsize};
+          fontheight = fontmap['W'].size.y + 8;
+          fontbeary = fontmap['W'].bearing.y;
+          break;
+        case GLFW_KEY_F:
+          page = page >= maxpage? maxpage : page + 1;
+          baseline = 0;
+          break;
+        case GLFW_KEY_B:
+          page = page <= 1? 1 : page - 1;
+          baseline = 0;
+          break;
+        case GLFW_KEY_D:
+          baseline += 1;
+          break;
+        case GLFW_KEY_U:
+          baseline = baseline <= 0? 0 : baseline - 1;
+          break;
+      }
+      flag = true;
+    }
+  });
+  window.setScrollCallBack(
+    [&baseline, &flag]
+    (Window* self, double xoffset, double yoffset) -> void {
+      if (yoffset < 0) {
+        baseline = baseline <= 0? 0 : baseline - 1;
+      } else {
+        baseline += 1;
+      }
+      flag = true;
+  });
 
   glEnable(GL_CULL_FACE);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  // font map
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  fontmap = FontMap {fontlib, 24};
+  fontheight = fontmap['W'].size.y + 8;
+  fontbeary = fontmap['W'].bearing.y;
 
   // setting up shader
   string shaderdir = conf.query<string>("shaderdir");
@@ -226,12 +218,6 @@ int main(int argc, char** argv)
   glUseProgram(program);
   glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-  // font map
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  fontmap = new FontMap{fontlib, 24};
-  fontheight = (*fontmap)['W'].size.y + 8;
-  fontbeary = (*fontmap)['W'].bearing.y;
-
   // vao and vbo
   unsigned int VAO, VBO;
   glGenVertexArrays(1, &VAO);
@@ -246,7 +232,7 @@ int main(int argc, char** argv)
 
   glm::vec3 color{0.92f, 0.85f, 0.69f};
   int line = 20;
-  while (!glfwWindowShouldClose(window)) {
+  while (!window.shouldClose()) {
     if (flag) {
       // render it only necessory
       projection = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
@@ -261,9 +247,9 @@ int main(int argc, char** argv)
       const Range &pagerange = document.get_page(page);
       for (line = pagerange.begin + baseline; line <=pagerange.end; line++) {
         int y = height - fontbeary - (line - pagerange.begin - baseline) * fontheight;
-        render_text(program, *fontmap, VAO, VBO, 0, y, scale, color, document.at(line));
+        render_text(program, fontmap, VAO, VBO, 0, y, 1.0f, color, document.at(line));
       }
-      glfwSwapBuffers(window);
+      window.swap();
       flag = false;
     }
     glfwWaitEvents(); // block the loop, reduce cpu usage
